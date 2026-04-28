@@ -1,12 +1,12 @@
 import { ChatOpenAI } from "@langchain/openai";
 
 export function createLLM(): ChatOpenAI {
-  // Hardcoded for testing — verify the call chain works
-  const baseURL = "https://api.okinto.com/v1";
-  const apiKey = "sk-k0C9T0xzgDbDf4fZpU60nHKmHF1Qy2XJzL6jpacEx9eJBukM";
+  const baseURL = localStorage.getItem("codex_api_url") || "";
+  const apiKey = localStorage.getItem("codex_api_key") || "";
 
-  // This WILL appear in the BROWSER DevTools console (right-click app → Inspect → Console)
-  console.log("[LLM] HARDCODED createLLM called, baseURL=", baseURL, "model=gpt-5.4");
+  if (!baseURL || !apiKey) {
+    console.warn("[LLM] Missing config — please set API 地址 and API Key in Settings");
+  }
 
   return new ChatOpenAI({
     model: "gpt-5.4",
