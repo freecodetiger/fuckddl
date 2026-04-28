@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@theme {
+  /* Backgrounds */
+  --color-bg-primary: #FAFAFA;
+  --color-bg-card: #FFFFFF;
+  --color-bg-secondary: #F2F2F7;
+
+  /* Text — Apple HIG gray scale */
+  --color-text-primary: #1C1C1E;
+  --color-text-secondary: #8E8E93;
+  --color-text-tertiary: #C7C7CC;
+
+  /* Accents — soft functional colors */
+  --color-accent: #5E9BFF;
+  --color-accent-soft: rgba(94, 155, 255, 0.10);
+  --color-accent-green: #6AC9A0;
+  --color-accent-green-soft: rgba(106, 201, 160, 0.10);
+  --color-accent-lavender: #B8A8E0;
+  --color-accent-lavender-soft: rgba(184, 168, 224, 0.10);
+  --color-accent-rose: #FF8A8A;
+  --color-accent-rose-soft: rgba(255, 138, 138, 0.10);
+
+  /* Separators */
+  --color-separator: #E5E5EA;
+  --color-separator-light: #F2F2F7;
+
+  /* Typography */
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", Roboto, sans-serif;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows — minimal, hairline-focused */
+  --shadow-hairline: 0 0.5px 0 rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* --- Entry animations --- */
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* --- Waveform bars (5 bars, GPU-friendly via scaleY) --- */
+
+@keyframes wave-bar-1 {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(0.8); }
+}
+@keyframes wave-bar-2 {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+@keyframes wave-bar-3 {
+  0%, 100% { transform: scaleY(0.2); }
+  50% { transform: scaleY(0.9); }
+}
+@keyframes wave-bar-4 {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(0.7); }
+}
+@keyframes wave-bar-5 {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(0.85); }
+}
+
+/* --- Dot bounce (processing indicator) --- */
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* --- Step flow animations --- */
+
+@keyframes step-enter {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+@keyframes check-stroke {
+  from { stroke-dashoffset: 18; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* --- Utility classes --- */
+
+.animate-card-enter {
+  animation: card-enter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.22s cubic-bezier(0, 0, 0.58, 1) both;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.18s ease-in both;
+}
+
+.animate-step-enter {
+  animation: step-enter 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+.dot-bounce-1 { animation: dot-bounce 1.6s ease-in-out infinite; }
+.dot-bounce-2 { animation: dot-bounce 1.6s ease-in-out 0.15s infinite; }
+.dot-bounce-3 { animation: dot-bounce 1.6s ease-in-out 0.3s infinite; }
+
+/* --- Slide-in from top for newly added items --- */
+@keyframes slide-in-top {
+  from { transform: translateY(-100%); opacity: 0; max-height: 0; }
+  to { transform: translateY(0); opacity: 1; max-height: 200px; }
+}
+
+.animate-slide-in-top {
+  animation: slide-in-top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}

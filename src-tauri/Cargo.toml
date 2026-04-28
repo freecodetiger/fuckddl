@@ -1,0 +1,33 @@
+[package]
+name = "fuckddl"
+version = "0.1.0"
+description = "AI-powered schedule management"
+authors = ["fuckddl"]
+license = "MIT"
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-notification = "2"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+git2 = "0.19"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect", "handshake", "native-tls"] }
+futures-util = "0.3"
+base64 = "0.22"
+http = "1"
+dirs = "5"
