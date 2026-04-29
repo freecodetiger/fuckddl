@@ -4,9 +4,11 @@ import type { ScheduleEvent } from "../types";
 
 interface ScheduleState {
   events: ScheduleEvent[];
+  recentEvents: ScheduleEvent[];
   loading: boolean;
   error: string | null;
   fetchToday: () => Promise<void>;
+  fetchRecent: () => Promise<void>;
   fetchByDate: (date: string) => Promise<void>;
   createEvent: (params: {
     title: string;
@@ -31,8 +33,19 @@ interface ScheduleState {
 
 export const useSchedule = create<ScheduleState>((set, _get) => ({
   events: [],
+  recentEvents: [],
   loading: false,
   error: null,
+
+  fetchRecent: async () => {
+    set({ loading: true, error: null });
+    try {
+      const recent = await invoke<ScheduleEvent[]>("get_recent_events", { days: 7 });
+      set({ recentEvents: recent, loading: false });
+    } catch (e) {
+      set({ error: String(e), loading: false });
+    }
+  },
 
   fetchToday: async () => {
     set({ loading: true, error: null });
@@ -94,6 +107,7 @@ export const useSchedule = create<ScheduleState>((set, _get) => ({
       });
       set((s) => ({
         events: s.events.filter((e) => e.id !== eventId),
+        recentEvents: s.recentEvents.filter((e) => e.id !== eventId),
         loading: false,
       }));
       return result;

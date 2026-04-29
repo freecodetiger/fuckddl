@@ -4,6 +4,11 @@ use chrono::Local;
 use uuid::Uuid;
 
 #[tauri::command]
+pub fn get_recent_events(days: i64) -> Vec<ScheduleEvent> {
+    json_store::read_recent_events(days)
+}
+
+#[tauri::command]
 pub fn get_today_schedules() -> Vec<ScheduleEvent> {
     let today = Local::now().format("%Y-%m-%d").to_string();
     json_store::read_events_by_date(&today)

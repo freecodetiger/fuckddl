@@ -6,24 +6,36 @@
   --color-bg-card: #FFFFFF;
   --color-bg-secondary: #F2F2F7;
 
-  /* Text — Apple HIG gray scale */
-  --color-text-primary: #1C1C1E;
-  --color-text-secondary: #8E8E93;
-  --color-text-tertiary: #C7C7CC;
+  /* Text — deeper for higher contrast */
+  --color-text-primary: #0D0D0D;
+  --color-text-secondary: #6B6B70;
+  --color-text-tertiary: #AEAEB2;
 
-  /* Accents — soft functional colors */
-  --color-accent: #5E9BFF;
-  --color-accent-soft: rgba(94, 155, 255, 0.10);
-  --color-accent-green: #6AC9A0;
-  --color-accent-green-soft: rgba(106, 201, 160, 0.10);
-  --color-accent-lavender: #B8A8E0;
-  --color-accent-lavender-soft: rgba(184, 168, 224, 0.10);
-  --color-accent-rose: #FF8A8A;
-  --color-accent-rose-soft: rgba(255, 138, 138, 0.10);
+  /* Accents — monochrome */
+  --color-accent: #1A1A1A;
+  --color-accent-soft: rgba(0, 0, 0, 0.06);
+  --color-accent-green: #2D2D2D;
+  --color-accent-green-soft: rgba(0, 0, 0, 0.06);
+  --color-accent-lavender: #4A4A4A;
+  --color-accent-lavender-soft: rgba(0, 0, 0, 0.06);
+  --color-accent-rose: #1A1A1A;
+  --color-accent-rose-soft: rgba(0, 0, 0, 0.06);
 
-  /* Separators */
-  --color-separator: #E5E5EA;
-  --color-separator-light: #F2F2F7;
+  /* Candy colors — for today's schedule cards */
+  --color-candy-pink: #FFE4E8;
+  --color-candy-mint: #E0F5EC;
+  --color-candy-lavender: #EDE4F5;
+  --color-candy-yellow: #FFF3D6;
+  --color-candy-blue: #DCE8FA;
+  --color-candy-pink-text: #D44A6A;
+  --color-candy-mint-text: #3D8B60;
+  --color-candy-lavender-text: #7059A0;
+  --color-candy-yellow-text: #B08020;
+  --color-candy-blue-text: #4070B0;
+
+  /* Separators — darker for clearer boundaries */
+  --color-separator: #D1D1D6;
+  --color-separator-light: #E5E5EA;
 
   /* Typography */
   --font-family-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", Roboto, sans-serif;
@@ -152,4 +164,16 @@ html, body, #root {
 
 .animate-slide-in-top {
   animation: slide-in-top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* --- Dialog card rises from bottom bar --- */
+@keyframes dialog-rise {
+  from { transform: translateY(20px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* --- Claude-style breathing dot --- */
+@keyframes claude-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
 }

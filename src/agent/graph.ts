@@ -1,129 +1,62 @@
+import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 import type { AgentResult, AgentStep } from "../types";
 import { agentTools } from "./tools";
-import { createLLM } from "./llm";
 
-const SYSTEM_PROMPT = `You are a proactive AI schedule manager for the app "fuckddl".
-You help users manage their calendar through natural, friendly conversation. You take initiative to make scheduling effortless.
+function createLLM(): ChatOpenAI {
+  const baseURL = localStorage.getItem("codex_api_url") || "";
+  const apiKey = localStorage.getItem("codex_api_key") || "";
+  if (!baseURL || !apiKey) {
+    console.warn("[LLM] Config missing — use settings to configure AI service");
+  }
+  return new ChatOpenAI({ model: "gpt-5.4", temperature: 0.3, apiKey, configuration: { baseURL } });
+}
 
-## Your capabilities:
-- Create schedule events with start/end time, description, and reminders
-- Create todo tasks with deadlines (no start time, only a "do by" date)
-- Query schedules by date or keyword; query all todo tasks
-- Update or cancel existing events and todos
-- Delete events and todos
-- Proactively summarize the user's day when appropriate
+const SYSTEM_PROMPT = `你是日程管理助手。直接调用工具，不要解释。
 
-## Schedule vs Todo:
-- **Schedule**: has a specific START time (e.g. "明天下午3点开会") → use create_schedule
-- **Todo**: has only a DEADLINE, no specific start (e.g. "周五前完成报告", "记得买牛奶") → use create_todo
-- When in doubt: if the user specifies a time → schedule. If they only specify a date or "before X" → todo.
-
-## Core rules:
-1. The current date context will be provided. Always use it to resolve relative dates like "tomorrow", "next Monday".
-2. When creating events, always set a meaningful, concise title based on what the user said.
-3. If the user specifies a time like "3pm", convert it to ISO 8601 (e.g. 2026-04-29T15:00:00).
-4. If no end time is specified, default to 1 hour after start time.
-5. When the user asks about their schedule without specifying a date, default to today.
-6. When a user says "cancel X" or "remove X", first query to find matching events, then update or delete.
-7. Keep responses concise and natural, in Chinese.
-8. After completing an action, confirm in one short, natural sentence.
-
-## Be proactive and smart:
-9. When a user says something like "明天上午开会", you already have enough info — DO NOT ask for more. Create the event immediately with reasonable defaults:
-  - Morning = 9:00-10:00, Afternoon = 14:00-15:00, Evening = 19:00-20:00
-  - "开会" → title: "会议", "吃饭" → title: "晚餐", "健身" → title: "健身"
-  - Default duration is 1 hour unless specified otherwise
-10. Only ask a clarifying question when TRULY ambiguous:
-  - "明天见人" → ask "上午还是下午？"
-  - "下午有事" → this is querying, not creating. Query the schedule.
-  - "明天开会" → create at 9:00-10:00 without asking
-  - "下周找个时间" → ask "哪天比较方便？"
-11. When the user says something like "今天有什么安排" or the app first opens, first query today's schedule, then present a natural summary.
-12. After creating a schedule, also mention how many events are now on that day (e.g. "已添加。今天共3个日程").
-13. If the user seems to be checking in (e.g. "我回来了", "开始工作"), proactively summarize today's remaining tasks.
-14. Infer reminders: when user specifies a time like "3pm meeting", consider it important and add a 15-minute reminder. Don't ask — just do it.
-15. For social events like "吃饭" or "聚会", set the duration to 2 hours instead of 1.
-
-## Multi-turn behavior:
-16. Only ask ONE clarifying question at a time. Never ask multiple questions.
-17. If the user provides follow-up answers, use conversation history to fill in missing context and complete the original request.`;
+规则：
+- 创建日程 startTime/endTime 用 ISO 8601 格式。未指定则默认 1h，上午=9:00，下午=14:00，晚上=19:00
+- 取消/修改：先 query_schedules 查找，再用 update_schedule 逐个处理。取消=status:"cancelled"
+- 删除：用 delete_schedule，仅用户明确说"删除"时
+- 回复简短友好，中文。完成后说一句确认，如"已创建~"`;
 
 function buildDateContext(): string {
   const now = new Date();
-  return `Current date: ${now.toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "long",
-  })}`;
-}
-
-function buildMessages(
-  userInput: string,
-  history: Array<{ role: string; text: string }>,
-  dateContext: string
-) {
-  const messages = [
-    new SystemMessage(SYSTEM_PROMPT),
-    new SystemMessage(dateContext),
-  ];
-
-  for (const entry of history) {
-    if (entry.role === "user") {
-      messages.push(new HumanMessage(entry.text));
-    } else {
-      messages.push(new AIMessage(entry.text));
-    }
-  }
-
-  messages.push(new HumanMessage(userInput));
-  return messages;
+  return now.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 }
 
 async function executeTools(
   toolCalls: Array<{ name: string; args: Record<string, unknown>; id?: string }>
 ): Promise<ToolMessage[]> {
   const toolMessages: ToolMessage[] = [];
-
-  for (const toolCall of toolCalls) {
-    const tool = agentTools.find((t) => t.name === toolCall.name);
+  for (const tc of toolCalls) {
+    const tool = agentTools.find((t) => t.name === tc.name);
     if (tool) {
       try {
-        const result = await (tool as any).invoke(toolCall.args);
-        toolMessages.push(
-          new ToolMessage({
-            tool_call_id: toolCall.id!,
-            content: result,
-          })
-        );
+        const result = await (tool as any).invoke(tc.args);
+        toolMessages.push(new ToolMessage({ tool_call_id: tc.id!, content: result }));
       } catch (e) {
-        toolMessages.push(
-          new ToolMessage({
-            tool_call_id: toolCall.id!,
-            content: JSON.stringify({
-              success: false,
-              error: String(e),
-            }),
-          })
-        );
+        toolMessages.push(new ToolMessage({ tool_call_id: tc.id!, content: JSON.stringify({ success: false, error: String(e) }) }));
       }
     }
   }
-
   return toolMessages;
 }
 
 function getIntentLabel(toolName: string): string {
-  if (toolName === "create_schedule") return "创建日程";
-  if (toolName === "query_schedules") return "查询日程";
-  if (toolName === "update_schedule") return "修改日程";
-  if (toolName === "delete_schedule") return "删除日程";
-  if (toolName === "create_todo") return "添加待办";
-  if (toolName === "query_todos") return "查询待办";
-  if (toolName === "update_todo") return "更新待办";
-  if (toolName === "delete_todo") return "删除待办";
-  return "处理中";
+  const map: Record<string, string> = {
+    create_schedule: "创建日程", query_schedules: "查询日程",
+    update_schedule: "修改日程", delete_schedule: "删除日程",
+    create_todo: "添加待办", query_todos: "查询待办",
+    update_todo: "更新待办", delete_todo: "删除待办",
+  };
+  return map[toolName] || "处理中";
+}
+
+export interface ConversationStep {
+  type: "user" | "ai-text" | "ai-tool";
+  text: string;
+  detail?: string;
 }
 
 export async function runAgent(
@@ -131,92 +64,128 @@ export async function runAgent(
   options?: {
     history?: Array<{ role: string; text: string }>;
     onProgress?: (step: AgentStep) => void;
+    onConversation?: (step: ConversationStep) => void;
+    signal?: AbortSignal;
   }
 ): Promise<AgentResult> {
-  const { onProgress, history = [] } = options || {};
-  const llm = createLLM();
-  const llmWithTools = llm.bindTools(agentTools);
-  const dateContext = buildDateContext();
-
-  // Step 1: Understanding
-  onProgress?.({ id: "understanding", label: "正在理解...", status: "active" });
-
-  const messages = buildMessages(userInput, history, dateContext);
-  const response = await llmWithTools.invoke(messages);
-  const aiMsg = response as AIMessage;
-  const toolCalls = aiMsg.tool_calls || [];
-
-  onProgress?.({ id: "understanding", label: "已理解", status: "completed" });
-
-  // No tool calls — chat or clarification, use response directly
-  if (toolCalls.length === 0) {
-    const content = typeof response.content === "string" ? response.content : "";
-    const isQuestion =
-      content.includes("?") ||
-      content.includes("？") ||
-      (content.length < 80 && content.length > 0);
-
-    if (isQuestion) {
-      return {
-        intent: "clarify",
-        action: "ask_question",
-        question: content,
-        requiresFollowUp: true,
-        message: content,
-        success: true,
-      };
-    }
-
-    onProgress?.({ id: "completing", label: "已完成", status: "completed" });
-    return {
-      intent: "chat",
-      action: "chat",
-      message: content || "好的",
-      success: true,
-    };
-  }
-
-  // Step 2: Execute tools
-  const intentTool = toolCalls[0];
-  const intentLabel = getIntentLabel(intentTool.name);
-
-  onProgress?.({ id: "executing", label: intentLabel, status: "active" });
-
-  const toolMessages = await executeTools(toolCalls);
-
-  onProgress?.({ id: "executing", label: intentLabel, status: "completed" });
-
-  // Step 3: Build response from LLM's own text + tool results
-  // The first LLM response already contains conversational text (e.g. "好的，我来创建明天上午的会议")
-  // Use it directly instead of making a second LLM call — saves ~3-5 seconds
-  const llmText = typeof response.content === "string" ? response.content : "";
-
-  // If tool executed successfully, use the LLM's text as response
-  // Otherwise make a quick second call for summary
-  const firstToolResult = toolMessages[0];
-  let finalContent: string;
+  const { onProgress, history = [], onConversation, signal } = options || {};
+  const checkAborted = () => { if (signal?.aborted) throw new DOMException("Aborted", "AbortError"); };
 
   try {
-    const parsed = JSON.parse(firstToolResult.content as string);
-    if (parsed.success) {
-      // Tool succeeded — use LLM's first response text directly
-      finalContent = llmText || "已完成";
-    } else {
-      // Tool failed — compose error message
-      finalContent = `操作失败：${parsed.error || "未知错误"}`;
+    checkAborted();
+    const llm = createLLM();
+    const llmWithTools = llm.bindTools(agentTools);
+    const dateContext = buildDateContext();
+
+    onConversation?.({ type: "user", text: userInput });
+
+    let messages: (SystemMessage | HumanMessage | AIMessage | ToolMessage)[] = [
+      new SystemMessage(SYSTEM_PROMPT),
+      new SystemMessage(`当前日期：${dateContext}`),
+      ...history.map(e => e.role === "user" ? new HumanMessage(e.text) : new AIMessage(e.text)),
+      new HumanMessage(userInput),
+    ];
+
+    let primaryIntent = "chat";
+    let firstAction = "";
+    let allText = "";
+    let pendingConfirmation: AgentResult["pendingConfirmation"];
+    let pendingTodo: AgentResult["pendingTodo"];
+
+    const MAX_LOOPS = 5;
+    for (let loop = 0; loop < MAX_LOOPS; loop++) {
+      checkAborted();
+
+      onProgress?.({ id: "understanding", label: loop === 0 ? "正在理解..." : "继续处理...", status: "active" });
+
+      const response = await llmWithTools.invoke(messages, { signal });
+      const aiMsg = response as AIMessage;
+      const toolCalls = aiMsg.tool_calls || [];
+      const content = (typeof response.content === "string" ? response.content : "") ||
+                      ((response as any).reasoning_content as string)?.slice(-120) || "";
+      console.log(`[Agent] loop=${loop} content="${content.slice(0,60)}" tools=${toolCalls.length}`);
+
+      onProgress?.({ id: "understanding", label: "已理解", status: "completed" });
+
+      // No tool calls — done
+      if (toolCalls.length === 0) {
+        const isQuestion = content.includes("?") || content.includes("？");
+        const reply = content || (primaryIntent !== "chat" ? getIntentLabel(firstAction) + "完成~" : "有什么可以帮你的？");
+        if (reply && reply !== allText) {
+          onConversation?.({ type: "ai-text", text: reply });
+        }
+        onProgress?.({ id: "completing", label: "已完成", status: "completed" });
+        return {
+          intent: isQuestion ? "clarify" : primaryIntent as any,
+          action: firstAction || "chat",
+          question: isQuestion ? content : undefined,
+          requiresFollowUp: isQuestion,
+          message: reply,
+          success: true,
+          pendingConfirmation, pendingTodo,
+        };
+      }
+
+      // Check for delete confirmation
+      for (const tc of toolCalls) {
+        if (tc.name === "delete_schedule" || tc.name === "delete_todo") {
+          const args = tc.args as any;
+          onProgress?.({ id: "completing", label: "需要确认", status: "completed" });
+          return {
+            intent: "delete" as any, action: tc.name,
+            message: `确认删除？`, success: true,
+            pendingConfirmation: { type: tc.name === "delete_schedule" ? "delete_schedule" : "delete_todo", id: args.eventId || args.todoId || "", title: args.eventId || args.todoId || "" },
+          };
+        }
+        // Cancel (update with status="cancelled") — needs confirmation too
+        if (tc.name === "update_schedule" && (tc.args as any)?.status === "cancelled") {
+          const args = tc.args as any;
+          onProgress?.({ id: "completing", label: "需要确认", status: "completed" });
+          return {
+            intent: "update" as any, action: tc.name,
+            message: "确认取消这个日程？", success: true,
+            pendingConfirmation: { type: "cancel_schedule", id: args.eventId || "", title: args.eventId || "" },
+          };
+        }
+        if (tc.name === "create_todo" && !pendingTodo) {
+          const args = tc.args as any;
+          onProgress?.({ id: "completing", label: "请确认", status: "completed" });
+          return {
+            intent: "create_todo" as any, action: tc.name,
+            message: "请确认待办信息", success: true,
+            pendingTodo: { title: args.title || "", deadline: args.deadline || "", priority: args.priority || "medium", estimatedMinutes: args.estimatedMinutes, description: args.description },
+          };
+        }
+      }
+
+      // Track intent
+      const curIntent = toolCalls[0].name.replace("_schedule", "").replace("_todo", "");
+      if (!firstAction) { primaryIntent = curIntent; firstAction = toolCalls[0].name; }
+      if (curIntent === "create" || curIntent === "update" || curIntent === "delete") primaryIntent = curIntent;
+
+      // Show tool calls in conversation
+      for (const tc of toolCalls) {
+        const args = tc.args as any;
+        onConversation?.({ type: "ai-tool", text: getIntentLabel(tc.name), detail: args.title || args.eventId || args.todoId || "" });
+      }
+
+      // Execute
+      const label = getIntentLabel(toolCalls[0].name);
+      onProgress?.({ id: "executing", label: `${label} (${toolCalls.length}项)`, status: "active" });
+      const toolMessages = await executeTools(toolCalls);
+      console.log("[Agent] executed", toolCalls.length, "tools:", toolMessages.map(tm => { try { const p = JSON.parse(tm.content as string); return p.success ? "OK" : "FAIL:"+p.error; } catch { return "?"; } }));
+      onProgress?.({ id: "executing", label: `${label} (${toolCalls.length}项)`, status: "completed" });
+
+      // Feed back to LLM for next loop
+      messages.push(aiMsg);
+      for (const tm of toolMessages) messages.push(tm);
     }
-  } catch {
-    finalContent = llmText || "已完成";
+
+    // Max loops
+    onProgress?.({ id: "completing", label: "已完成", status: "completed" });
+    return { intent: primaryIntent as any, action: firstAction || "chat", message: allText || "已完成", success: true, pendingConfirmation, pendingTodo };
+  } catch (e: any) {
+    if (e?.name === "AbortError") throw e;
+    throw e;
   }
-
-  onProgress?.({ id: "completing", label: "已完成", status: "completed" });
-
-  const intent = intentTool.name.replace("_schedule", "") as AgentResult["intent"];
-
-  return {
-    intent,
-    action: intentTool.name,
-    message: finalContent,
-    success: true,
-  };
 }

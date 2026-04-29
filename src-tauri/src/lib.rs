@@ -9,6 +9,15 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             crate::store::json_store::ensure_dirs().ok();
+            // Load .env file from app data directory
+            let env_path = dirs::data_dir()
+                .expect("no data dir")
+                .join("fuckddl")
+                .join(".env");
+            if env_path.exists() {
+                dotenv::from_path(&env_path).ok();
+                log::info!("Loaded env from {:?}", env_path);
+            }
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -22,6 +31,7 @@ pub fn run() {
             commands::config::read_config,
             commands::config::save_config,
             commands::stt::transcribe_audio,
+            commands::schedule::get_recent_events,
             commands::schedule::get_today_schedules,
             commands::schedule::get_schedules_by_date,
             commands::schedule::create_schedule,

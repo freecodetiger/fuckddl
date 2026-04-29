@@ -126,6 +126,41 @@ pub fn read_all_events() -> Vec<ScheduleEvent> {
     events
 }
 
+pub fn read_recent_events(days: i64) -> Vec<ScheduleEvent> {
+    let cutoff = chrono::Local::now() - chrono::Duration::days(days);
+    let mut events = Vec::new();
+    let events_root = events_dir();
+    if !events_root.exists() { return events; }
+
+    if let Ok(year_entries) = fs::read_dir(&events_root) {
+        for year_entry in year_entries.flatten() {
+            if let Ok(month_entries) = fs::read_dir(year_entry.path()) {
+                for month_entry in month_entries.flatten() {
+                    if let Ok(file_entries) = fs::read_dir(month_entry.path()) {
+                        for file_entry in file_entries.flatten() {
+                            if let Ok(content) = fs::read_to_string(file_entry.path()) {
+                                if let Ok(event) = serde_json::from_str::<ScheduleEvent>(&content) {
+                                    if let Ok(updated) = chrono::NaiveDateTime::parse_from_str(
+                                        &event.updated_at,
+                                        "%Y-%m-%dT%H:%M:%S",
+                                    ) {
+                                        if updated >= cutoff.naive_local() {
+                                            events.push(event);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    events.sort_by_key(|e| e.updated_at.clone());
+    events.reverse(); // most recent first
+    events
+}
+
 pub fn delete_event(event_id: &str) -> std::io::Result<bool> {
     let events_root = events_dir();
     if !events_root.exists() { return Ok(false); }

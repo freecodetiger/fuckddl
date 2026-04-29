@@ -109,7 +109,7 @@ export const updateScheduleTool = tool(
   {
     name: "update_schedule",
     description:
-      "Update an existing schedule event. Use this when the user wants to change, reschedule, cancel, or mark as done an existing event. First query to find the event ID if not provided.",
+      "Update or CANCEL an existing schedule event. Use this for ANY modification including cancelling (set status='cancelled'), rescheduling, or marking done. IMPORTANT: when user says '取消' or 'cancel', use THIS tool with status='cancelled', NOT delete_schedule. First query to find the event ID.",
     schema: z.object({
       eventId: z.string().describe("The UUID of the event to update"),
       title: z.string().optional().describe("New title for the event"),

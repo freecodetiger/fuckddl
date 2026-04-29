@@ -79,4 +79,16 @@ export interface AgentResult {
   success: boolean;
   question?: string;
   requiresFollowUp?: boolean;
+  pendingConfirmation?: {
+    type: "delete_schedule" | "delete_todo" | "cancel_schedule";
+    id: string;
+    title: string;
+  };
+  pendingTodo?: {
+    title: string;
+    deadline: string;
+    priority: string;
+    estimatedMinutes?: number;
+    description?: string;
+  };
 }

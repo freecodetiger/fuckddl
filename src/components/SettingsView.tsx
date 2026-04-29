@@ -11,7 +11,6 @@ interface Config {
 interface SettingsViewProps {
   config: Config;
   onSave: (partial: Config) => Promise<void>;
-  onBack: () => void;
 }
 
 function ConfigField({
@@ -71,6 +70,7 @@ function ConfigField({
           onChange={(e) => setLocal(e.target.value)}
           className="flex-1 bg-bg-secondary border border-separator rounded-[10px] px-[12px] py-[9px] text-[14px] text-text-primary outline-none focus:border-accent transition-colors duration-150 placeholder:text-text-tertiary"
           autoFocus
+          onBlur={() => { if (local !== value) handleSave(); }}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
             if (e.key === "Escape") setEditing(false);
@@ -92,16 +92,10 @@ function ConfigField({
   );
 }
 
-export function SettingsView({ config, onSave, onBack }: SettingsViewProps) {
+export function SettingsView({ config, onSave }: SettingsViewProps) {
   return (
     <div className="flex-1 flex flex-col">
-      <div className="pt-[52px] pb-[20px] px-[20px] flex items-center gap-[12px] flex-shrink-0">
-        <button
-          className="text-[15px] text-accent font-[500] bg-accent-soft px-[12px] py-[6px] rounded-[12px] hover:opacity-80 transition-opacity"
-          onClick={onBack}
-        >
-          ← 返回
-        </button>
+      <div className="pt-[52px] pb-[20px] px-[20px] flex-shrink-0">
         <span className="text-[17px] font-[600] text-text-primary">设置</span>
       </div>
 
@@ -144,7 +138,13 @@ export function SettingsView({ config, onSave, onBack }: SettingsViewProps) {
               <path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8L10 2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
             </svg>
             <div>
-              <div className="text-[13px] text-text-primary font-[600]">AI 服务</div>
+              <div className="text-[13px] text-text-primary font-[600] flex items-center gap-[6px]">
+                AI 服务
+                <span
+                  className="w-[6px] h-[6px] rounded-full inline-block"
+                  style={{ backgroundColor: (config.codex_api_url && config.codex_api_key) ? "var(--color-accent-green)" : "var(--color-accent-rose)" }}
+                />
+              </div>
               <div className="text-[12px] text-text-tertiary">OpenAI 兼容接口</div>
             </div>
           </div>
